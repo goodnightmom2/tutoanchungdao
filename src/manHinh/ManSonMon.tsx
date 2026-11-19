@@ -32,7 +32,7 @@ export const ManSonMon: React.FC<{
   loiHeThong: string | null;
   khiDangNhap: (duLieu: DuLieuDangNhap) => Promise<void>;
   khiDangKy: (duLieu: DuLieuDangKy) => Promise<void>;
-  khiDangNhapGoogle: (mayDungChung: boolean) => Promise<void>;
+  khiDangNhapGoogle?: (mayDungChung: boolean) => Promise<void>;
   khiQuenMatKhau: (email: string) => Promise<{ thanhCong: boolean; thongDiep: string }>;
   khiChoiThuKhach: () => void;
 }> = ({
@@ -41,7 +41,6 @@ export const ManSonMon: React.FC<{
   loiHeThong,
   khiDangNhap,
   khiDangKy,
-  khiDangNhapGoogle,
   khiQuenMatKhau,
   khiChoiThuKhach,
 }) => {
@@ -588,33 +587,14 @@ export const ManSonMon: React.FC<{
             </form>
           )}
 
-          {/* Phan cach + Google + Choi thu */}
+          {/* Phan cach + Choi thu */}
           <div className="relative flex items-center py-1">
             <div className="flex-1 border-t border-[#1F2A4D]" />
             <span className="px-3 text-xs text-[#9BA8BE]">hoặc</span>
             <div className="flex-1 border-t border-[#1F2A4D]" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              disabled={dangXuLy}
-              onClick={() => {
-                boPhatAmThanh.phatAmNhanNut();
-                setLoiCucBo(null);
-                void khiDangNhapGoogle(mayDungChung);
-              }}
-              className="min-h-[44px] px-4 rounded-xl border border-[#E4BC5A]/45 bg-[#141D33] hover:bg-[#1B2742] text-sm font-semibold text-[#F6EEDB] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden="true">
-                <path
-                  fill="#EA4335"
-                  d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5l2.6-2.5C16.8 3.3 14.6 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12S6.7 21.6 12 21.6c6.9 0 9.2-4.8 9.2-7.3 0-.5-.1-.9-.1-1.3H12z"
-                />
-              </svg>
-              <span>Đăng nhập bằng Google</span>
-            </button>
-
+          <div className="grid grid-cols-1 gap-2.5">
             <button
               type="button"
               data-start="true"
@@ -623,7 +603,7 @@ export const ManSonMon: React.FC<{
                 boPhatAmThanh.phatAmNgoDao();
                 khiChoiThuKhach();
               }}
-              className="min-h-[44px] px-4 rounded-xl border border-[#2C3B5E] bg-[#070B14] hover:border-[#62D1B5]/60 text-sm font-semibold text-[#62D1B5] cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] w-full px-4 rounded-xl border border-[#2C3B5E] bg-[#070B14] hover:border-[#62D1B5]/60 text-sm font-semibold text-[#62D1B5] cursor-pointer disabled:opacity-50"
             >
               Chơi thử không cần tài khoản
             </button>
