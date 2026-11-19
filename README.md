@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Tu Toán Chứng Đạo
 
-# Run and deploy your AI Studio app
+Trò chơi học Toán lớp 10 (Chương III: Hệ thức lượng trong tam giác) phong cách thủy mặc tiên hiệp.
 
-This contains everything you need to run your app locally.
+- **Web**: [https://tutoanchungdao.vercel.app](https://tutoanchungdao.vercel.app)
+- **Công nghệ**: React 19, TypeScript, Vite 8, Tailwind CSS 4, KaTeX, Supabase (Auth + PostgreSQL + RLS), Vercel Serverless Functions.
 
-View your app in AI Studio: https://ai.studio/apps/06771a51-ac3f-4be9-a68e-481dbdb260c6
+## Phát triển cục bộ
 
-## Run Locally
+```bash
+cp .env.example .env.local
+# Điền VITE_SUPABASE_URL và VITE_SUPABASE_PUBLISHABLE_KEY
+npm install
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+## Biến môi trường
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+| Biến | Bắt buộc | Mô tả |
+| :--- | :--- | :--- |
+| `VITE_SUPABASE_URL` | Có | URL dự án Supabase |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Có | Publishable key của Supabase |
+| `GEMINI_API_KEY` | Tùy chọn | API key Gemini cho `/api/sinh-cau-hoi` |

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { boPhatAmThanh } from './amThanh/boPhatAmThanh';
 import { layThongTinCanhGioi } from './duLieu/canhGioi';
@@ -58,23 +58,57 @@ import {
   tinhTongSao,
 } from './logic/tienTrinh';
 import { BanDoGiaiDoan, VanHaiDo } from './manHinh/BanDoVanHaiVaGiaiDoan';
-import { ManBangQuanTri } from './manHinh/ManBangQuanTri';
-import { ManCaiDatVaGiaoVien } from './manHinh/ManCaiDatVaGiaoVien';
-import { KetQuaManChoi, ManChoi } from './manHinh/ManChoi';
-import { ManDongPhu } from './manHinh/ManDongPhu';
-import { ManHoSo } from './manHinh/ManHoSo';
-import { ManCotTruyen } from './manHinh/ManMoDauVaCotTruyen';
-import { ManPhongThayDo } from './manHinh/ManPhongThayDo';
+import type { KetQuaManChoi } from './manHinh/ManChoi';
 import {
   DuLieuDangKy,
   DuLieuDangNhap,
   ManSonMon,
 } from './manHinh/ManSonMon';
-import { ManTangKinhCac } from './manHinh/ManTangKinhCac';
-import { ManTaoNhanVat } from './manHinh/ManTaoNhanVat';
-import { ManCuaHang, ManTuiDo } from './manHinh/ManTuiDoVaCuaHang';
-import { ManVuotAi } from './manHinh/ManVuotAi';
-import { KetQuaYeuVuong, ManYeuVuong } from './manHinh/ManYeuVuong';
+import type { KetQuaYeuVuong } from './manHinh/ManYeuVuong';
+
+const ManBangQuanTri = lazy(() =>
+  import('./manHinh/ManBangQuanTri').then((m) => ({ default: m.ManBangQuanTri }))
+);
+const ManCaiDatVaGiaoVien = lazy(() =>
+  import('./manHinh/ManCaiDatVaGiaoVien').then((m) => ({
+    default: m.ManCaiDatVaGiaoVien,
+  }))
+);
+const ManChoi = lazy(() =>
+  import('./manHinh/ManChoi').then((m) => ({ default: m.ManChoi }))
+);
+const ManDongPhu = lazy(() =>
+  import('./manHinh/ManDongPhu').then((m) => ({ default: m.ManDongPhu }))
+);
+const ManHoSo = lazy(() =>
+  import('./manHinh/ManHoSo').then((m) => ({ default: m.ManHoSo }))
+);
+const ManCotTruyen = lazy(() =>
+  import('./manHinh/ManMoDauVaCotTruyen').then((m) => ({
+    default: m.ManCotTruyen,
+  }))
+);
+const ManPhongThayDo = lazy(() =>
+  import('./manHinh/ManPhongThayDo').then((m) => ({ default: m.ManPhongThayDo }))
+);
+const ManTangKinhCac = lazy(() =>
+  import('./manHinh/ManTangKinhCac').then((m) => ({ default: m.ManTangKinhCac }))
+);
+const ManTaoNhanVat = lazy(() =>
+  import('./manHinh/ManTaoNhanVat').then((m) => ({ default: m.ManTaoNhanVat }))
+);
+const ManCuaHang = lazy(() =>
+  import('./manHinh/ManTuiDoVaCuaHang').then((m) => ({ default: m.ManCuaHang }))
+);
+const ManTuiDo = lazy(() =>
+  import('./manHinh/ManTuiDoVaCuaHang').then((m) => ({ default: m.ManTuiDo }))
+);
+const ManVuotAi = lazy(() =>
+  import('./manHinh/ManVuotAi').then((m) => ({ default: m.ManVuotAi }))
+);
+const ManYeuVuong = lazy(() =>
+  import('./manHinh/ManYeuVuong').then((m) => ({ default: m.ManYeuVuong }))
+);
 import {
   BieuTuongAmThanh,
   BieuTuongBanDo,
@@ -1386,6 +1420,15 @@ export default function App() {
         )}
 
         <div className="flex-1 min-w-0">
+          <Suspense
+            fallback={
+              <div className="min-h-[60vh] flex items-center justify-center">
+                <div className="px-5 py-3 rounded-xl border border-[#E4BC5A]/30 bg-[#0E1629]/85 text-sm text-[#F2D88B] animate-pulse">
+                  Đang ngưng tụ linh khí...
+                </div>
+              </div>
+            }
+          >
           {manHinh === 'moDau' && (
             <ManSonMon
               choPhepDangKy={cauHinhCongKhai.choPhepDangKy}
@@ -1697,6 +1740,7 @@ export default function App() {
               khiQuayLai={() => setManHinh('banDoTheGioi')}
             />
           )}
+          </Suspense>
         </div>
       </div>
 

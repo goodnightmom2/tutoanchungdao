@@ -1,10 +1,6 @@
 node_modules/
-build/
 dist/
-coverage/
 .vercel/
-.aistudio/
-public/assets/aistudio/
 .DS_Store
 *.log
 .env*
