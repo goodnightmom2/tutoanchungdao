@@ -15,6 +15,7 @@ import {
   kiemTraToanVenNganHang,
 } from '../logic/mauCauHoi';
 import { THU_TU_CANH_GIOI, THU_TU_GIAI_DOAN } from '../logic/tienTrinh';
+import { supabase } from '../lib/supabase';
 import { CongThucToan } from '../thanhPhan/CongThucToan';
 import { NutLenhBai } from '../thanhPhan/KhungGiaoDien';
 
@@ -194,9 +195,18 @@ export const ManCaiDatVaGiaoVien: React.FC<{
     try {
       const infoCg = DANH_SACH_CANH_GIOI.find((c) => c.id === formCanhGioi);
       const infoGd = infoCg?.giaiDoan.find((g) => g.ma === formGiaiDoan);
+      const { data: phien } = await supabase.auth.getSession();
+      const accessToken = phien.session?.access_token;
+      if (!accessToken) {
+        setThongBaoGv('Cần đăng nhập tài khoản Quản trị viên để sử dụng tính năng này.');
+        return;
+      }
       const res = await fetch('/api/sinh-cau-hoi', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           canhGioi: infoCg?.ten,
           giaiDoan: infoGd?.ten,

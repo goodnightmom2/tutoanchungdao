@@ -16,7 +16,6 @@ import {
   MaGiaiDoan,
   TienTrinhNguoiChoi,
 } from '../kieuDuLieu/troChoi';
-import { laEmailQuanTriGoc } from '../lib/supabase';
 import { khoLuuTru } from '../logic/khoLuuTru';
 import { kiemTraHopLeNganHangCauHoi } from '../logic/luuTru';
 import {
@@ -345,8 +344,8 @@ export const ManBangQuanTri: React.FC<{
   };
 
   const xuLyQuyenQuanTri = async (nd: HoSoNguoiDung) => {
-    if (laEmailQuanTriGoc(nd.email)) {
-      setLoi('Không thể gỡ quyền của Quản trị viên gốc.');
+    if (nd.uid === khoLuuTru.layUid()) {
+      setLoi('Không thể tự gỡ quyền Quản trị viên của chính mình.');
       return;
     }
     try {
@@ -938,7 +937,7 @@ export const ManBangQuanTri: React.FC<{
                     const tong = nd.tomTat?.tongCauLam || 0;
                     const dung = nd.tomTat?.tongCauDung || 0;
                     const tiLe = tong > 0 ? Math.round((dung / tong) * 100) : 0;
-                    const laGoc = laEmailQuanTriGoc(nd.email);
+                    const laGoc = nd.uid === khoLuuTru.layUid();
                     return (
                       <tr
                         key={nd.uid}

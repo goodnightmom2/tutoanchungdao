@@ -1,10 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export const EMAIL_QUAN_TRI_GOC = 'nhannghia1712004@gmail.com';
-export const DANH_SACH_EMAIL_QUAN_TRI_GOC = [
-  'nhannghia171004@gmail.com',
-  'nhannghia1712004@gmail.com',
-];
 export const TEN_MIEN_EMAIL_AO = 'tutoan.example';
 
 const KHOA_MAY_DUNG_CHUNG = 'tu_toan_chung_dao_may_dung_chung';
@@ -99,11 +94,6 @@ export function laySupabasePhu(): SupabaseClient {
     );
   }
   return clientPhu;
-}
-
-export function laEmailQuanTriGoc(email?: string | null): boolean {
-  if (!email) return false;
-  return DANH_SACH_EMAIL_QUAN_TRI_GOC.includes(email.trim().toLowerCase());
 }
 
 export async function kiemTraKetNoiSupabase(): Promise<boolean> {

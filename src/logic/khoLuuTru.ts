@@ -18,7 +18,6 @@ import {
   TienTrinhNguoiChoi,
 } from '../kieuDuLieu/troChoi';
 import {
-  laEmailQuanTriGoc,
   laySupabasePhu,
   supabase,
   supabaseDaCauHinh,
@@ -511,12 +510,9 @@ class KhoLuuTru {
   // === TAI DU LIEU NGUOI DUNG TU DAM MAY ===
   public async kiemTraQuyenQuanTri(
     uid: string,
-    email?: string | null,
-    emailVerified?: boolean
+    _email?: string | null,
+    _emailVerified?: boolean
   ): Promise<boolean> {
-    if (laEmailQuanTriGoc(email) && emailVerified) {
-      return true;
-    }
     try {
       const { data } = await supabase
         .from('quan_tri_vien')
@@ -1037,7 +1033,7 @@ class KhoLuuTru {
     const rows = (resNd.data || []) as DongNguoiDung[];
     const danhSach = rows.map((d) => {
       const hs = this.chuyenDongSangHoSo(d);
-      hs.laQuanTri = tapQt.has(d.uid) || laEmailQuanTriGoc(hs.email);
+      hs.laQuanTri = tapQt.has(d.uid);
       hs.biKhoa = mapKhoa.has(d.uid);
       hs.lyDoKhoa = mapKhoa.get(d.uid);
       return hs;
@@ -1236,8 +1232,9 @@ class KhoLuuTru {
   }
 
   public async qtThuHoiQuyenQuanTri(hoSo: HoSoNguoiDung): Promise<void> {
-    if (laEmailQuanTriGoc(hoSo.email)) {
-      throw new Error('Không thể thu hồi quyền của Quản trị viên gốc.');
+    const uidQt = await this.layUidHienTaiTuAuth();
+    if (uidQt && hoSo.uid === uidQt) {
+      throw new Error('Không thể tự thu hồi quyền Quản trị viên của chính mình.');
     }
     const { error } = await supabase.from('quan_tri_vien').delete().eq('uid', hoSo.uid);
     if (error) throw error;

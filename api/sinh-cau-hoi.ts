@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 interface VercelReq {
   method?: string;
+  headers?: Record<string, string | string[] | undefined>;
   body?: {
     canhGioi?: string;
     giaiDoan?: string;
@@ -15,9 +16,60 @@ interface VercelRes {
   json: (data: unknown) => void;
 }
 
+async function xacThucQuanTri(authHeader?: string): Promise<boolean> {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const token = authHeader.slice(7).trim();
+  if (!token) return false;
+
+  const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').trim();
+  const supabaseKey = (
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    ''
+  ).trim();
+  if (!supabaseUrl || !supabaseKey) return false;
+
+  try {
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!userRes.ok) return false;
+    const user = (await userRes.json()) as { id?: string };
+    if (!user?.id) return false;
+
+    const adminRes = await fetch(
+      `${supabaseUrl}/rest/v1/quan_tri_vien?uid=eq.${encodeURIComponent(user.id)}&select=uid`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (!adminRes.ok) return false;
+    const rows = (await adminRes.json()) as unknown[];
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(yeuCau: VercelReq, phanHoi: VercelRes) {
   if (yeuCau.method !== 'POST') {
     phanHoi.status(405).json({ loi: 'Chỉ hỗ trợ phương thức POST.' });
+    return;
+  }
+
+  const rawAuth = yeuCau.headers?.authorization || yeuCau.headers?.Authorization;
+  const authHeader = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
+  const laQuanTri = await xacThucQuanTri(authHeader);
+  if (!laQuanTri) {
+    phanHoi.status(403).json({
+      loi: 'Chỉ Quản trị viên đã xác thực mới được phép sử dụng tính năng sinh câu hỏi.',
+    });
     return;
   }
 
@@ -32,11 +84,14 @@ export default async function handler(yeuCau: VercelReq, phanHoi: VercelRes) {
   try {
     const { canhGioi, giaiDoan, chuDe, soLuong } = yeuCau.body || {};
     const soCau = Math.min(Math.max(Number(soLuong) || 3, 1), 5);
+    const cgSach = String(canhGioi || 'Luyện Khí').slice(0, 60);
+    const gdSach = String(giaiDoan || 'Sơ kỳ').slice(0, 60);
+    const cdSach = String(chuDe || 'Giá trị lượng giác và hệ thức lượng trong tam giác').slice(0, 160);
     const ai = new GoogleGenAI({ apiKey: khoaApi });
 
     const yeuCauNoiDung = [
       `Hãy tạo ${soCau} câu hỏi Toán lớp 10 (bộ Kết nối tri thức), Chương III: Hệ thức lượng trong tam giác.`,
-      `Cảnh giới: ${canhGioi || 'Luyện Khí'}, Giai đoạn: ${giaiDoan || 'Sơ kỳ'}, Chủ đề trọng tâm: ${chuDe || 'Giá trị lượng giác và hệ thức lượng trong tam giác'}.`,
+      `Cảnh giới: ${cgSach}, Giai đoạn: ${gdSach}, Chủ đề trọng tâm: ${cdSach}.`,
       'Yêu cầu bắt buộc:',
       '- Viết hoàn toàn bằng tiếng Việt có dấu chuẩn xác, lồng ghép nhẹ nhàng bối cảnh tu tiên/cổ phong nhưng dữ kiện toán học phải rõ ràng, chính xác 100%.',
       '- Dùng ký hiệu KaTeX trong dấu $...$ cho công thức và góc độ (ví dụ $\\sin 60^\\circ$, $\\widehat{A} = 45^\\circ$).',

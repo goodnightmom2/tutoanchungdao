@@ -50,6 +50,9 @@ export const CongThucToan: React.FC<ThuocTinhCongThuc> = ({
             displayMode: phan.loai === 'khoi',
             throwOnError: false,
             strict: false,
+            trust: false,
+            maxExpand: 500,
+            maxSize: 100,
           });
           return (
             <span
