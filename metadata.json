@@ -1,0 +1,6 @@
+{
+  "name": "Tu Toán Chứng Đạo",
+  "description": "Trò chơi học Toán 10 Chương III – Hệ thức lượng trong tam giác phong cách thủy mặc tiên hiệp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
