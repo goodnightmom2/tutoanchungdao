@@ -282,10 +282,12 @@ export const ManCaiDatVaGiaoVien: React.FC<{
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="tieu-de-vang text-2xl sm:text-3xl font-bold">
-            Cài Đặt & Màn Thầy/Cô
+            {laQuanTri ? 'Cài Đặt & Màn Thầy/Cô' : 'Cài Đặt'}
           </h1>
           <p className="text-sm text-[#9BA8BE]">
-            Tùy chỉnh trải nghiệm tu luyện và quản trị ngân hàng câu hỏi Chương III.
+            {laQuanTri
+              ? 'Tùy chỉnh trải nghiệm tu luyện và quản trị ngân hàng câu hỏi Chương III.'
+              : 'Tùy chỉnh âm thanh và trải nghiệm tu luyện của bạn.'}
           </p>
         </div>
         {laQuanTri && khiMoBangQuanTri && (
@@ -360,16 +362,17 @@ export const ManCaiDatVaGiaoVien: React.FC<{
               batDongHoYeuVuong: !tienTrinh.caiDat.batDongHoYeuVuong,
             })
         )}
-        {nutCongTac(
-          'Sinh đề mới từ nguồn (tùy chọn)',
-          'Mặc định tắt để chỉ dùng kho đề đã kiểm chứng. Khi bật, cho phép tạo biến thể bổ sung từ nguồn Chương III (gắn nhãn AI sinh & chờ duyệt).',
-          Boolean(tienTrinh.caiDat.sinhDeMoiAI),
-          () =>
-            khiDoiCaiDat({
-              ...tienTrinh.caiDat,
-              sinhDeMoiAI: !tienTrinh.caiDat.sinhDeMoiAI,
-            })
-        )}
+        {laQuanTri &&
+          nutCongTac(
+            'Sinh đề mới từ nguồn (tùy chọn)',
+            'Mặc định tắt để chỉ dùng kho đề đã kiểm chứng. Khi bật, cho phép tạo biến thể bổ sung từ nguồn Chương III (gắn nhãn AI sinh & chờ duyệt).',
+            Boolean(tienTrinh.caiDat.sinhDeMoiAI),
+            () =>
+              khiDoiCaiDat({
+                ...tienTrinh.caiDat,
+                sinhDeMoiAI: !tienTrinh.caiDat.sinhDeMoiAI,
+              })
+          )}
 
         <div className="pt-4 mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-[#9BA8BE]">
@@ -410,7 +413,8 @@ export const ManCaiDatVaGiaoVien: React.FC<{
         )}
       </section>
 
-      {/* Man Thay/Co */}
+      {/* Man Thay/Co (chi danh cho Quan tri vien) */}
+      {laQuanTri && (
       <section className="khung-ngoc-gian rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -868,6 +872,7 @@ export const ManCaiDatVaGiaoVien: React.FC<{
           </div>
         )}
       </section>
+      )}
 
       {/* Hop thoai xac nhan dat lai */}
       {xacNhanDatLai && (

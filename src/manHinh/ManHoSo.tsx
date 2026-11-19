@@ -36,6 +36,7 @@ export const ManHoSo: React.FC<{
   khiMoPhongThayDo: () => void;
   khiMoCaiDat: () => void;
   laKhach?: boolean;
+  laQuanTri?: boolean;
   uidNguoiDung?: string | null;
   khiMoDangNhap?: () => void;
 }> = ({
@@ -44,6 +45,7 @@ export const ManHoSo: React.FC<{
   khiMoPhongThayDo,
   khiMoCaiDat,
   laKhach = true,
+  laQuanTri = false,
   uidNguoiDung = null,
   khiMoDangNhap,
 }) => {
@@ -135,7 +137,7 @@ export const ManHoSo: React.FC<{
           </NutLenhBai>
           <NutLenhBai type="button" kieu="tram" onClick={khiMoCaiDat}>
             <BieuTuongCaiDat className="w-4 h-4" />
-            Cài đặt & Thầy/Cô
+            {laQuanTri ? 'Cài đặt & Thầy/Cô' : 'Cài đặt'}
           </NutLenhBai>
         </div>
       </div>

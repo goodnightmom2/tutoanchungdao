@@ -12,7 +12,8 @@ import {
 } from '../kieuDuLieu/troChoi';
 
 export const PHIEN_BAN_LUU_TRU = 4;
-export const CHU_KY_RUONG_CO_DUYEN_MS = 12 * 60 * 60 * 1000;
+export const CHU_KY_RUONG_CO_DUYEN_GIAY = 15 * 60;
+export const CHU_KY_RUONG_CO_DUYEN_MS = CHU_KY_RUONG_CO_DUYEN_GIAY * 1000;
 
 export const THU_TU_CANH_GIOI: MaCanhGioi[] = [
   'luyenKhi',

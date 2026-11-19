@@ -49,11 +49,10 @@ import {
   tenDangNhapSangEmail,
 } from './logic/taiKhoanLogic';
 import {
-  CHU_KY_RUONG_CO_DUYEN_MS,
+  CHU_KY_RUONG_CO_DUYEN_GIAY,
   khoaGiaiDoan,
   kiemTraThanhTichMoi,
   layThongTinHaoQuang,
-  moRuongCoDuyenSanSang,
   taoTienTrinhMacDinh,
   tinhTongSao,
 } from './logic/tienTrinh';
@@ -132,11 +131,42 @@ import { NenThuyMac, ThanhTruyenAm } from './thanhPhan/KhungGiaoDien';
 import { MenuTaiKhoan } from './thanhPhan/MenuTaiKhoan';
 import { NhanVat } from './thanhPhan/NhanVat';
 
-function dinhDangDemNguoc(ms: number): string {
-  const giay = Math.max(0, Math.floor(ms / 1000));
-  const gio = Math.floor(giay / 3600);
-  const phut = Math.floor((giay % 3600) / 60);
-  return `${gio}g${String(phut).padStart(2, '0')}p`;
+const KHOA_ONLINE_RUONG_TIEN_TO = 'tu_toan_ruong_online_';
+
+function docGiayOnlineRuong(uid?: string | null): number {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = Number(
+        window.localStorage.getItem(`${KHOA_ONLINE_RUONG_TIEN_TO}${uid || 'khach'}`) || 0
+      );
+      if (Number.isFinite(raw) && raw >= 0) {
+        return Math.min(CHU_KY_RUONG_CO_DUYEN_GIAY, Math.floor(raw));
+      }
+    }
+  } catch {
+    // Bo qua
+  }
+  return 0;
+}
+
+function luuGiayOnlineRuong(uid: string | null | undefined, giay: number): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(
+        `${KHOA_ONLINE_RUONG_TIEN_TO}${uid || 'khach'}`,
+        String(Math.min(CHU_KY_RUONG_CO_DUYEN_GIAY, Math.max(0, Math.floor(giay))))
+      );
+    }
+  } catch {
+    // Bo qua
+  }
+}
+
+function dinhDangDemNguocGiay(tongGiay: number): string {
+  const s = Math.max(0, Math.floor(tongGiay));
+  const phut = Math.floor(s / 60);
+  const giay = s % 60;
+  return `${String(phut).padStart(2, '0')}:${String(giay).padStart(2, '0')}`;
 }
 
 export default function App() {
@@ -163,7 +193,9 @@ export default function App() {
   const [ngoaiHinhTamPhongThayDo, setNgoaiHinhTamPhongThayDo] =
     useState<NgoaiHinh | null>(null);
   const [thongBao, setThongBao] = useState<string | null>(null);
-  const [bayGio, setBayGio] = useState(() => Date.now());
+  const [giayOnlineRuong, setGiayOnlineRuong] = useState<number>(() =>
+    docGiayOnlineRuong(null)
+  );
 
   // === TRANG THAI TAI KHOAN, DAM MAY & QUAN TRI ===
   const [nguoiDungAuth, setNguoiDungAuth] = useState<User | null>(null);
@@ -365,10 +397,27 @@ export default function App() {
     document.body.dataset.state = manHinh === 'moDau' ? 'title' : 'playing';
   }, [manHinh]);
 
+  // Nap thoi gian online tich luy ruong theo tai khoan
   useEffect(() => {
-    const t = window.setInterval(() => setBayGio(Date.now()), 30000);
+    setGiayOnlineRuong(docGiayOnlineRuong(nguoiDungAuth?.id || null));
+  }, [nguoiDungAuth?.id]);
+
+  // Dem thoi gian online tung giay de nhan Ruong Co Duyen (15 phut online)
+  useEffect(() => {
+    if (manHinh === 'moDau') return;
+    const uid = nguoiDungAuth?.id || null;
+    const t = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      setGiayOnlineRuong((cu) => {
+        if (cu >= CHU_KY_RUONG_CO_DUYEN_GIAY) return cu;
+        const moi = cu + 1;
+        luuGiayOnlineRuong(uid, moi);
+        return moi;
+      });
+    }, 1000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [manHinh, nguoiDungAuth?.id]);
 
   // Hop nhat ngan hang cau hoi: goc + tuy chinh dam may + ghi de cuc bo
   const nganHangDayDuChoQuanTri = useMemo<CauHoi[]>(() => {
@@ -654,12 +703,11 @@ export default function App() {
 
   // === LOGIC GAME GOC (GIU NGUYEN + DONG BO DAM MAY) ===
   const thongTinCanhHienTai = layThongTinCanhGioi(tienTrinh.canhGioiHienTai);
-  const ruongSanSang = moRuongCoDuyenSanSang(tienTrinh, bayGio);
-  const msConLai = Math.max(
+  const giayConLaiRuong = Math.max(
     0,
-    CHU_KY_RUONG_CO_DUYEN_MS -
-      (bayGio - (tienTrinh.thoiGianMoRuongCoDuyenCuoi || 0))
+    CHU_KY_RUONG_CO_DUYEN_GIAY - giayOnlineRuong
   );
+  const ruongSanSang = giayConLaiRuong <= 0;
 
   const thongBaoQuanTriHienThi =
     cauHinhCongKhai.thongBao &&
@@ -778,9 +826,9 @@ export default function App() {
   };
 
   const moRuongCoDuyen = () => {
-    if (!moRuongCoDuyenSanSang(tienTrinh, Date.now())) {
+    if (!ruongSanSang) {
       hienThongBao(
-        `Rương Cơ Duyên đang tụ khí, còn ${dinhDangDemNguoc(msConLai)}.`
+        `Rương Cơ Duyên đang tụ khí, cần online thêm ${dinhDangDemNguocGiay(giayConLaiRuong)}.`
       );
       return;
     }
@@ -797,7 +845,8 @@ export default function App() {
         [qua.vatPhamId]: (cu.tuiDo[qua.vatPhamId] || 0) + qua.soLuong,
       },
     }));
-    setBayGio(Date.now());
+    setGiayOnlineRuong(0);
+    luuGiayOnlineRuong(nguoiDungAuth?.id || null, 0);
     hienThongBao(
       `Mở Rương Cơ Duyên: +${qua.linhThach} Linh thạch và ${qua.soLuong} ${
         vp?.ten || 'bảo vật'
@@ -1312,11 +1361,17 @@ export default function App() {
                     ? 'bg-[#1E7F6B]/30 border-[#E4BC5A] text-[#F2D88B]'
                     : 'bg-[#0D1424] border-[#1F2A4D] text-[#9BA8BE]'
                 }`}
-                title="Rương Cơ Duyên"
+                title={
+                  ruongSanSang
+                    ? 'Nhận Rương Cơ Duyên ngay'
+                    : `Rương Cơ Duyên · Còn ${dinhDangDemNguocGiay(giayConLaiRuong)} online`
+                }
               >
-                <BieuTuongRuong className="w-4 h-4" />
-                <span className="hidden md:inline chu-so-bang">
-                  {ruongSanSang ? 'Nhận rương' : dinhDangDemNguoc(msConLai)}
+                <BieuTuongRuong className="w-4 h-4 shrink-0" />
+                <span className="chu-so-bang">
+                  {ruongSanSang
+                    ? 'Nhận rương'
+                    : dinhDangDemNguocGiay(giayConLaiRuong)}
                 </span>
               </button>
 
@@ -1344,8 +1399,8 @@ export default function App() {
 
               <button
                 type="button"
-                aria-label="Cài đặt và Màn Thầy Cô"
-                title="Cài đặt & Màn Thầy/Cô"
+                aria-label={laQuanTri ? 'Cài đặt và Màn Thầy Cô' : 'Cài đặt'}
+                title={laQuanTri ? 'Cài đặt & Màn Thầy/Cô' : 'Cài đặt'}
                 onClick={() => {
                   boPhatAmThanh.phatAmNhanNut();
                   setManHinh('caiDat');
@@ -1667,6 +1722,7 @@ export default function App() {
               }}
               khiMoCaiDat={() => setManHinh('caiDat')}
               laKhach={laKhach}
+              laQuanTri={laQuanTri}
               uidNguoiDung={nguoiDungAuth?.id || null}
               khiMoDangNhap={() => setManHinh('moDau')}
             />
