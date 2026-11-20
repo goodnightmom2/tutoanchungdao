@@ -13,6 +13,15 @@ export interface TomTatNguoiDung {
   hoatDongCuoi: number; // epoch ms trong client
 }
 
+export interface TongMon {
+  id: string;
+  tenTongMon: string;
+  tenLop: string;
+  uidGiaoVien: string;
+  moTa: string;
+  taoLuc: number;
+}
+
 export interface HoSoNguoiDung {
   uid: string;
   daoHieu: string;
@@ -25,7 +34,10 @@ export interface HoSoNguoiDung {
   canDoiMatKhau: boolean;
   hienTrenXepHang: boolean;
   tomTat: TomTatNguoiDung;
+  maTongMon?: string | null;
+  uidGiaoVien?: string | null;
   laQuanTri?: boolean;
+  laGiaoVien?: boolean;
   biKhoa?: boolean;
   lyDoKhoa?: string;
 }

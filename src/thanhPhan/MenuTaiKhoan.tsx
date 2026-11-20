@@ -16,10 +16,12 @@ export const MenuTaiKhoan: React.FC<{
   laKhach: boolean;
   hoSo: HoSoNguoiDung | null;
   laQuanTri: boolean;
+  laGiaoVien?: boolean;
   trangThaiDongBo: TrangThaiDongBo;
   mayDungChung: boolean;
   khiDong: () => void;
   khiMoDangNhap: () => void;
+  khiMoTongMon?: () => void;
   khiMoBangQuanTri: () => void;
   khiCapNhatHoSo: (daoHieu: string, lop: string) => Promise<{ ok: boolean; thongDiep: string }>;
   khiDoiMatKhau: (matKhauCu: string, matKhauMoi: string) => Promise<{ ok: boolean; thongDiep: string }>;
@@ -32,10 +34,12 @@ export const MenuTaiKhoan: React.FC<{
   laKhach,
   hoSo,
   laQuanTri,
+  laGiaoVien = false,
   trangThaiDongBo,
   mayDungChung,
   khiDong,
   khiMoDangNhap,
+  khiMoTongMon,
   khiMoBangQuanTri,
   khiCapNhatHoSo,
   khiDoiMatKhau,
@@ -254,6 +258,22 @@ export const MenuTaiKhoan: React.FC<{
                   {hoSo.hienTrenXepHang ? 'Bật' : 'Tắt'}
                 </button>
               </div>
+
+              {/* Nut Quan ly Tong Mon (hien khi laGiaoVien hoac laQuanTri) */}
+              {(laGiaoVien || laQuanTri) && khiMoTongMon && (
+                <NutLenhBai
+                  type="button"
+                  kieu="ngoc"
+                  className="w-full"
+                  onClick={() => {
+                    boPhatAmThanh.phatAmNhanNut();
+                    khiDong();
+                    khiMoTongMon();
+                  }}
+                >
+                  Quản Lý Tông Môn (Lớp & Điểm yếu Toán)
+                </NutLenhBai>
+              )}
 
               {/* Nut Bang Quan Tri (chi hien khi laQuanTri) */}
               {laQuanTri && (

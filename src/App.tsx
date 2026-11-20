@@ -68,6 +68,9 @@ import type { KetQuaYeuVuong } from './manHinh/ManYeuVuong';
 const ManBangQuanTri = lazy(() =>
   import('./manHinh/ManBangQuanTri').then((m) => ({ default: m.ManBangQuanTri }))
 );
+const ManTongMon = lazy(() =>
+  import('./manHinh/ManTongMon').then((m) => ({ default: m.ManTongMon }))
+);
 const ManCaiDatVaGiaoVien = lazy(() =>
   import('./manHinh/ManCaiDatVaGiaoVien').then((m) => ({
     default: m.ManCaiDatVaGiaoVien,
@@ -201,6 +204,7 @@ export default function App() {
   const [nguoiDungAuth, setNguoiDungAuth] = useState<User | null>(null);
   const [hoSo, setHoSo] = useState<HoSoNguoiDung | null>(null);
   const [laQuanTri, setLaQuanTri] = useState(false);
+  const [laGiaoVien, setLaGiaoVien] = useState(false);
   const [khoaTaiKhoan, setKhoaTaiKhoan] = useState<ThongTinKhoaTaiKhoan | null>(
     null
   );
@@ -268,13 +272,14 @@ export default function App() {
         khoLuuTru.chuyenCheDoKhach();
         setHoSo(null);
         setLaQuanTri(false);
+        setLaGiaoVien(false);
         setKhoaTaiKhoan(null);
         setHienChonDaoHieuGoogle(false);
         setTienTrinhKhachChoChuyen(null);
         setCauHoiDamMay([]);
         const ttKhach = khoLuuTru.docTienTrinhKhach();
         setTienTrinh(ttKhach);
-        setManHinh((m) => (m === 'bangQuanTri' ? 'moDau' : m));
+        setManHinh((m) => (m === 'bangQuanTri' || m === 'tongMon' ? 'moDau' : m));
         return;
       }
 
@@ -284,11 +289,13 @@ export default function App() {
 
       try {
         const emailDaXacMinh = Boolean(user.email_confirmed_at);
-        const [ttKhoa, quyenQt] = await Promise.all([
+        const [ttKhoa, quyenQt, quyenGv] = await Promise.all([
           khoLuuTru.kiemTraKhoaTaiKhoan(user.id),
           khoLuuTru.kiemTraQuyenQuanTri(user.id, user.email, emailDaXacMinh),
+          khoLuuTru.kiemTraQuyenGiaoVien(user.id),
         ]);
         setLaQuanTri(quyenQt);
+        setLaGiaoVien(quyenGv || quyenQt);
 
         if (ttKhoa && !quyenQt) {
           setKhoaTaiKhoan(ttKhoa);
@@ -360,12 +367,14 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Bao ve tuyen duong Bang Quan Tri (chan nguoi khong co quyen du doi URL/hash)
+  // Bao ve tuyen duong Bang Quan Tri va Quan ly Tong Mon
   useEffect(() => {
     if (manHinh === 'bangQuanTri' && !laQuanTri) {
       setManHinh(laKhach ? 'moDau' : 'banDoTheGioi');
+    } else if (manHinh === 'tongMon' && !laGiaoVien && !laQuanTri) {
+      setManHinh(laKhach ? 'moDau' : 'banDoTheGioi');
     }
-  }, [manHinh, laQuanTri, laKhach]);
+  }, [manHinh, laQuanTri, laGiaoVien, laKhach]);
 
   // Dat lai bo dem chi tiet luot choi moi khi vao man choi / vuot ai / yeu vuong
   useEffect(() => {
@@ -1310,11 +1319,15 @@ export default function App() {
                   <span className="font-serif font-bold text-sm sm:text-base text-[#F6EEDB] truncate">
                     {hoSo?.daoHieu || tienTrinh.ngoaiHinh.ten}
                   </span>
-                  {laQuanTri && (
+                  {laQuanTri ? (
                     <span className="hidden md:inline px-1.5 py-0.5 rounded bg-[#8F1F1A] border border-[#E4BC5A]/60 text-[10px] font-bold text-[#F2D88B] shrink-0">
                       Quản trị viên
                     </span>
-                  )}
+                  ) : laGiaoVien ? (
+                    <span className="hidden md:inline px-1.5 py-0.5 rounded bg-[#1E7F6B]/45 border border-[#62D1B5]/60 text-[10px] font-bold text-[#62D1B5] shrink-0">
+                      Giáo viên
+                    </span>
+                  ) : null}
                 </div>
                 <div className="text-[11px] text-[#62D1B5] hidden sm:flex items-center gap-1.5">
                   <span>{thongTinCanhHienTai.ten}</span>
@@ -1453,6 +1466,24 @@ export default function App() {
                 </button>
               );
             })}
+
+            {(laGiaoVien || laQuanTri) && (
+              <button
+                type="button"
+                onClick={() => {
+                  boPhatAmThanh.phatAmNhanNut();
+                  setManHinh('tongMon');
+                }}
+                className={`min-h-[46px] px-3.5 rounded-xl border text-sm font-semibold flex items-center gap-3 transition-all cursor-pointer mt-2 ${
+                  manHinh === 'tongMon'
+                    ? 'bg-[#1E7F6B]/80 border-[#62D1B5] text-[#F8F6EE] shadow-md'
+                    : 'bg-[#141D33]/85 border-[#62D1B5]/45 text-[#62D1B5] hover:border-[#62D1B5]'
+                }`}
+              >
+                <BieuTuongHoSo className="w-5 h-5" />
+                <span>Tông Môn (Lớp)</span>
+              </button>
+            )}
 
             {laQuanTri && (
               <button
@@ -1784,6 +1815,14 @@ export default function App() {
             />
           )}
 
+          {manHinh === 'tongMon' && (laGiaoVien || laQuanTri) && (
+            <ManTongMon
+              nganHangCauHoi={nganHangDayDuChoQuanTri}
+              laQuanTri={laQuanTri}
+              khiQuayLai={() => setManHinh('banDoTheGioi')}
+            />
+          )}
+
           {manHinh === 'bangQuanTri' && laQuanTri && (
             <ManBangQuanTri
               nganHangCauHoi={nganHangDayDuChoQuanTri}
@@ -1837,10 +1876,12 @@ export default function App() {
         laKhach={laKhach}
         hoSo={hoSo}
         laQuanTri={laQuanTri}
+        laGiaoVien={laGiaoVien}
         trangThaiDongBo={trangThaiDongBo}
         mayDungChung={khoLuuTru.laMayDungChung()}
         khiDong={() => setMoMenuTaiKhoan(false)}
         khiMoDangNhap={() => setManHinh('moDau')}
+        khiMoTongMon={() => setManHinh('tongMon')}
         khiMoBangQuanTri={() => setManHinh('bangQuanTri')}
         khiCapNhatHoSo={xuLyCapNhatHoSo}
         khiDoiMatKhau={xuLyDoiMatKhau}

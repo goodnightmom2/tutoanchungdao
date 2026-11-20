@@ -367,6 +367,26 @@ export const ManBangQuanTri: React.FC<{
     }
   };
 
+  const xuLyQuyenGiaoVien = async (nd: HoSoNguoiDung) => {
+    try {
+      if (nd.laGiaoVien) {
+        await khoLuuTru.qtThuHoiQuyenGiaoVien(nd);
+        setDsNguoiDung((cu) =>
+          cu.map((n) => (n.uid === nd.uid ? { ...n, laGiaoVien: false } : n))
+        );
+        setThongBao(`Đã thu hồi quyền Giáo viên (Chưởng Môn) của ${nd.daoHieu}.`);
+      } else {
+        await khoLuuTru.qtCapQuyenGiaoVien(nd.uid, nd.daoHieu);
+        setDsNguoiDung((cu) =>
+          cu.map((n) => (n.uid === nd.uid ? { ...n, laGiaoVien: true } : n))
+        );
+        setThongBao(`Đã cấp quyền Giáo viên (Chưởng Môn) cho ${nd.daoHieu}.`);
+      }
+    } catch (err) {
+      setLoi(doiMaLoiFirebase(err));
+    }
+  };
+
   const xuLyCapThayThe = async () => {
     if (!ndThayThe) return;
     const kt = kiemTraTenDangNhap(tenDnThayThe);
@@ -944,11 +964,16 @@ export const ManBangQuanTri: React.FC<{
                         className="border-b border-[#1F2A4D]/60 hover:bg-[#141D33]/40"
                       >
                         <td className="py-2.5 px-3">
-                          <div className="font-bold text-[#F2D88B] flex items-center gap-1.5">
+                          <div className="font-bold text-[#F2D88B] flex flex-wrap items-center gap-1.5">
                             <span>{nd.daoHieu}</span>
                             {nd.laQuanTri && (
                               <span className="px-1.5 py-0.5 rounded bg-[#8F1F1A] text-[10px] text-[#F2D88B]">
                                 Quản trị viên
+                              </span>
+                            )}
+                            {nd.laGiaoVien && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#1E7F6B]/40 border border-[#62D1B5]/50 text-[10px] text-[#62D1B5]">
+                                Giáo viên
                               </span>
                             )}
                           </div>
@@ -1038,6 +1063,13 @@ export const ManBangQuanTri: React.FC<{
                               className="px-2 py-1 rounded bg-[#070B14] border border-[#C8372D]/60 text-[#F28A80] cursor-pointer"
                             >
                               Đặt lại
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void xuLyQuyenGiaoVien(nd)}
+                              className="px-2 py-1 rounded bg-[#070B14] border border-[#62D1B5]/50 text-[#62D1B5] cursor-pointer"
+                            >
+                              {nd.laGiaoVien ? 'Gỡ giáo viên' : 'Cấp giáo viên'}
                             </button>
                             {!laGoc && (
                               <button

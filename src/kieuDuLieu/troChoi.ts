@@ -53,6 +53,7 @@ export type ManHinh =
   | 'cuaHang'
   | 'hoSo'
   | 'caiDat'
+  | 'tongMon'
   | 'bangQuanTri';
 
 export interface HinhVeTamGiac {

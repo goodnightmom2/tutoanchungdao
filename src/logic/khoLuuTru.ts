@@ -9,6 +9,7 @@ import {
   MucXepHang,
   NhatKyQuanTri,
   ThongTinKhoaTaiKhoan,
+  TongMon,
   TrangThaiDongBo,
   XungDotTienTrinh,
 } from '../kieuDuLieu/taiKhoan';
@@ -86,6 +87,8 @@ interface DongNguoiDung {
   can_doi_mat_khau: boolean;
   hien_tren_xep_hang: boolean;
   tom_tat: Record<string, unknown> | null;
+  ma_tong_mon?: string | null;
+  uid_giao_vien?: string | null;
 }
 
 class KhoLuuTru {
@@ -525,6 +528,19 @@ class KhoLuuTru {
     }
   }
 
+  public async kiemTraQuyenGiaoVien(uid: string): Promise<boolean> {
+    try {
+      const { data } = await supabase
+        .from('giao_vien')
+        .select('uid')
+        .eq('uid', uid)
+        .maybeSingle();
+      return Boolean(data);
+    } catch {
+      return false;
+    }
+  }
+
   public async kiemTraKhoaTaiKhoan(uid: string): Promise<ThongTinKhoaTaiKhoan | null> {
     try {
       const { data } = await supabase
@@ -573,6 +589,8 @@ class KhoLuuTru {
       dangNhapCuoi: layEpochTuField(d.dang_nhap_cuoi),
       canDoiMatKhau: Boolean(d.can_doi_mat_khau),
       hienTrenXepHang: d.hien_tren_xep_hang !== false,
+      maTongMon: d.ma_tong_mon ? String(d.ma_tong_mon) : null,
+      uidGiaoVien: d.uid_giao_vien ? String(d.uid_giao_vien) : null,
       tomTat: {
         canhGioiHienTai: (tt.canhGioiHienTai as MaCanhGioi) || 'luyenKhi',
         tongSao: Number(tt.tongSao || 0),
@@ -593,6 +611,8 @@ class KhoLuuTru {
     phuongThuc: 'tenDangNhap' | 'google';
     tienTrinhBanDau?: TienTrinhNguoiChoi;
     canDoiMatKhau?: boolean;
+    maTongMon?: string | null;
+    uidGiaoVien?: string | null;
   }): Promise<{ hoSo: HoSoNguoiDung; tienTrinh: TienTrinhNguoiChoi }> {
     const ttGoc = params.tienTrinhBanDau
       ? chuyenDoiTienTrinhCu(params.tienTrinhBanDau)
@@ -623,6 +643,8 @@ class KhoLuuTru {
       dang_nhap_cuoi: nowIso,
       can_doi_mat_khau: Boolean(params.canDoiMatKhau),
       hien_tren_xep_hang: true,
+      ma_tong_mon: params.maTongMon ?? null,
+      uid_giao_vien: params.uidGiaoVien ?? null,
       tom_tat: {
         canhGioiHienTai: tomTat.canhGioiHienTai,
         tongSao: tomTat.tongSao,
@@ -1016,15 +1038,17 @@ class KhoLuuTru {
       qNd = qNd.lt('tao_luc', conTro);
     }
 
-    const [resNd, resQt, resKhoa] = await Promise.all([
+    const [resNd, resQt, resGv, resKhoa] = await Promise.all([
       qNd,
       supabase.from('quan_tri_vien').select('uid'),
+      supabase.from('giao_vien').select('uid'),
       supabase.from('khoa_tai_khoan').select('uid, ly_do'),
     ]);
 
     if (resNd.error) throw resNd.error;
 
     const tapQt = new Set((resQt.data || []).map((r) => String(r.uid)));
+    const tapGv = new Set((resGv.data || []).map((r) => String(r.uid)));
     const mapKhoa = new Map<string, string>();
     for (const r of resKhoa.data || []) {
       mapKhoa.set(String(r.uid), String(r.ly_do || 'Đang tạm khóa'));
@@ -1034,6 +1058,7 @@ class KhoLuuTru {
     const danhSach = rows.map((d) => {
       const hs = this.chuyenDongSangHoSo(d);
       hs.laQuanTri = tapQt.has(d.uid);
+      hs.laGiaoVien = tapGv.has(d.uid);
       hs.biKhoa = mapKhoa.has(d.uid);
       hs.lyDoKhoa = mapKhoa.get(d.uid);
       return hs;
@@ -1443,6 +1468,341 @@ class KhoLuuTru {
       'capTaiKhoanThayThe',
       hoSoCu.uid,
       `Tài khoản cũ ${hoSoCu.tenDangNhap || hoSoCu.uid} -> tài khoản mới ${tenDangNhapMoi} (${uidMoi})`
+    );
+
+    return { tenDangNhap: tenDangNhapMoi, matKhauTam, uidMoi };
+  }
+
+  // =========================================================================
+  // ADMIN QUAN LY GIAO VIEN & GIAO VIEN QUAN LY TONG MON (NHIEU LOP)
+  // =========================================================================
+
+  public async qtCapQuyenGiaoVien(uid: string, daoHieu: string): Promise<void> {
+    const uidQt = (await this.layUidHienTaiTuAuth()) || '';
+    const { error } = await supabase.from('giao_vien').upsert({
+      uid,
+      cap_boi: uidQt,
+      cap_luc: new Date().toISOString(),
+      ghi_chu: `Cấp quyền Chưởng Môn (Giáo viên) cho ${daoHieu}`,
+    });
+    if (error) throw error;
+    await this.ghiNhatKyQuanTri(
+      'capQuyenGiaoVien',
+      uid,
+      `Cấp quyền Giáo viên (Chưởng Môn) cho ${daoHieu}`
+    );
+  }
+
+  public async qtThuHoiQuyenGiaoVien(hoSo: HoSoNguoiDung): Promise<void> {
+    const { error } = await supabase.from('giao_vien').delete().eq('uid', hoSo.uid);
+    if (error) throw error;
+    await this.ghiNhatKyQuanTri(
+      'thuHoiQuyenGiaoVien',
+      hoSo.uid,
+      `Thu hồi quyền Giáo viên của ${hoSo.daoHieu}`
+    );
+  }
+
+  public async docThongTinTongMon(maTongMon: string): Promise<TongMon | null> {
+    try {
+      const { data } = await supabase
+        .from('tong_mon')
+        .select('*')
+        .eq('id', maTongMon)
+        .maybeSingle();
+      if (!data) return null;
+      return {
+        id: String(data.id),
+        tenTongMon: String(data.ten_tong_mon),
+        tenLop: String(data.ten_lop),
+        uidGiaoVien: String(data.uid_giao_vien),
+        moTa: String(data.mo_ta || ''),
+        taoLuc: layEpochTuField(data.tao_luc),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  public async gvDocDanhSachTongMon(chiCuaToi = false): Promise<TongMon[]> {
+    const uidGv = await this.layUidHienTaiTuAuth();
+    if (!uidGv) return [];
+    let q = supabase.from('tong_mon').select('*').order('tao_luc', { ascending: false });
+    if (chiCuaToi) {
+      q = q.eq('uid_giao_vien', uidGv);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data || []).map((d) => ({
+      id: String(d.id),
+      tenTongMon: String(d.ten_tong_mon),
+      tenLop: String(d.ten_lop),
+      uidGiaoVien: String(d.uid_giao_vien),
+      moTa: String(d.mo_ta || ''),
+      taoLuc: layEpochTuField(d.tao_luc),
+    }));
+  }
+
+  public async gvTaoTongMon(params: {
+    tenTongMon: string;
+    tenLop: string;
+    moTa?: string;
+  }): Promise<TongMon> {
+    const uidGv = await this.layUidHienTaiTuAuth();
+    if (!uidGv) throw new Error('Chưa đăng nhập.');
+    const slugLop = params.tenLop
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 12) || 'lop';
+    const id = `tm_${slugLop}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase.from('tong_mon').insert({
+      id,
+      ten_tong_mon: params.tenTongMon.trim().slice(0, 60),
+      ten_lop: params.tenLop.trim().slice(0, 20),
+      uid_giao_vien: uidGv,
+      mo_ta: (params.moTa || '').trim().slice(0, 200),
+      tao_luc: nowIso,
+    });
+    if (error) throw error;
+    return {
+      id,
+      tenTongMon: params.tenTongMon.trim().slice(0, 60),
+      tenLop: params.tenLop.trim().slice(0, 20),
+      uidGiaoVien: uidGv,
+      moTa: (params.moTa || '').trim().slice(0, 200),
+      taoLuc: Date.now(),
+    };
+  }
+
+  public async gvSuaTongMon(
+    id: string,
+    params: { tenTongMon: string; tenLop: string; moTa?: string }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('tong_mon')
+      .update({
+        ten_tong_mon: params.tenTongMon.trim().slice(0, 60),
+        ten_lop: params.tenLop.trim().slice(0, 20),
+        mo_ta: (params.moTa || '').trim().slice(0, 200),
+      })
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  public async gvXoaTongMon(id: string): Promise<void> {
+    const { error } = await supabase.from('tong_mon').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  public async gvDocHocSinhCuaToi(
+    maTongMon?: string | null,
+    laQuanTriXemTatCa = false
+  ): Promise<HoSoNguoiDung[]> {
+    const uidGv = await this.layUidHienTaiTuAuth();
+    if (!uidGv) return [];
+
+    let qNd = supabase
+      .from('nguoi_dung')
+      .select('*')
+      .order('tao_luc', { ascending: false })
+      .limit(300);
+
+    if (maTongMon) {
+      qNd = qNd.eq('ma_tong_mon', maTongMon);
+    } else if (!laQuanTriXemTatCa) {
+      qNd = qNd.eq('uid_giao_vien', uidGv);
+    } else {
+      qNd = qNd.not('ma_tong_mon', 'is', null);
+    }
+
+    const [resNd, resKhoa] = await Promise.all([
+      qNd,
+      supabase.from('khoa_tai_khoan').select('uid, ly_do'),
+    ]);
+    if (resNd.error) throw resNd.error;
+
+    const mapKhoa = new Map<string, string>();
+    for (const r of resKhoa.data || []) {
+      mapKhoa.set(String(r.uid), String(r.ly_do || 'Đang tạm khóa'));
+    }
+
+    return ((resNd.data || []) as DongNguoiDung[]).map((d) => {
+      const hs = this.chuyenDongSangHoSo(d);
+      hs.biKhoa = mapKhoa.has(d.uid);
+      hs.lyDoKhoa = mapKhoa.get(d.uid);
+      return hs;
+    });
+  }
+
+  public async gvDocKetQuaLuotCuaHocSinh(
+    danhSachUid: string[],
+    soLuong = 600
+  ): Promise<KetQuaLuotDamMay[]> {
+    if (danhSachUid.length === 0) return [];
+    try {
+      const { data, error } = await supabase
+        .from('ket_qua_luot')
+        .select('*')
+        .in('uid', danhSachUid.slice(0, 200))
+        .order('tao_luc', { ascending: false })
+        .limit(soLuong);
+      if (error) throw error;
+
+      return (data || []).map((d) => ({
+        maLuot: String(d.ma_luot),
+        uid: String(d.uid || ''),
+        canhGioi: (d.canh_gioi as MaCanhGioi) || 'luyenKhi',
+        giaiDoan: (d.giai_doan as MaGiaiDoan | 'tuDo') || 'soKy',
+        cheDo: (d.che_do as KetQuaLuotDamMay['cheDo']) || 'vuotAi',
+        soCau: Number(d.so_cau || 0),
+        soCauDung: Number(d.so_cau_dung || 0),
+        sao: Number(d.sao || 0),
+        thoiLuongGiay: Number(d.thoi_luong_giay || 0),
+        chiTiet: Array.isArray(d.chi_tiet) ? d.chi_tiet : [],
+        taoLuc: layEpochTuField(d.tao_luc),
+      }));
+    } catch (err) {
+      console.error('Lỗi đọc kết quả lượt của lớp:', err);
+      return [];
+    }
+  }
+
+  public async gvTaoTaiKhoanHocSinhHangLoat(
+    tongMon: TongMon,
+    danhSach: { daoHieu: string; lop?: string }[],
+    khiTienDo?: (daXong: number, tong: number, mucMoi: KetQuaTaoHangLoatMuc) => void
+  ): Promise<KetQuaTaoHangLoatMuc[]> {
+    const uidGv = tongMon.uidGiaoVien || (await this.layUidHienTaiTuAuth());
+    if (!uidGv) throw new Error('Không xác định được tài khoản Giáo viên.');
+
+    const supabasePhu = laySupabasePhu();
+    const tapDaDung = new Set<string>();
+    const ketQua: KetQuaTaoHangLoatMuc[] = [];
+
+    for (let i = 0; i < danhSach.length; i++) {
+      const dong = danhSach[i];
+      const lopHoc = (dong.lop || tongMon.tenLop || '').trim().slice(0, 20);
+      const tenDangNhap = taoTenDangNhapTuHoTen(dong.daoHieu, lopHoc, i + 1, tapDaDung);
+      const matKhauTam = taoMatKhauTam(8);
+      const emailAo = tenDangNhapSangEmail(tenDangNhap);
+
+      let muc: KetQuaTaoHangLoatMuc = {
+        stt: i + 1,
+        daoHieu: dong.daoHieu,
+        lop: lopHoc,
+        tenDangNhap,
+        matKhauTam,
+        thanhCong: false,
+      };
+
+      let soLanThu = 0;
+      while (soLanThu < 2) {
+        soLanThu += 1;
+        try {
+          const { data, error } = await supabasePhu.auth.signUp({
+            email: emailAo,
+            password: matKhauTam,
+            options: { data: { dao_hieu: dong.daoHieu } },
+          });
+          if (error) throw error;
+          const uidMoi = data.user?.id;
+          if (!uidMoi) {
+            throw new Error('Không nhận được mã người dùng từ Supabase Auth.');
+          }
+          await supabasePhu.auth.signOut();
+
+          await this.taoHoSoVaTienTrinhMoi({
+            uid: uidMoi,
+            daoHieu: dong.daoHieu,
+            tenDangNhap,
+            email: null,
+            lop: lopHoc || null,
+            phuongThuc: 'tenDangNhap',
+            canDoiMatKhau: true,
+            maTongMon: tongMon.id,
+            uidGiaoVien: uidGv,
+          });
+
+          muc = { ...muc, thanhCong: true, uid: uidMoi };
+          break;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message.toLowerCase() : '';
+          if (msg.includes('rate limit') && soLanThu < 2) {
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+          muc = { ...muc, thanhCong: false, loi: doiMaLoiFirebase(err) };
+          break;
+        }
+      }
+
+      ketQua.push(muc);
+      khiTienDo?.(i + 1, danhSach.length, muc);
+      if (i < danhSach.length - 1) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
+
+    return ketQua;
+  }
+
+  public async gvKhoaTaiKhoan(uid: string, lyDo: string): Promise<void> {
+    const uidGv = (await this.layUidHienTaiTuAuth()) || '';
+    const { error } = await supabase.from('khoa_tai_khoan').upsert({
+      uid,
+      ly_do: lyDo.trim().slice(0, 200) || 'Tạm khóa bởi Giáo viên phụ trách',
+      luc: new Date().toISOString(),
+      khoa_boi: uidGv,
+    });
+    if (error) throw error;
+  }
+
+  public async gvMoKhoaTaiKhoan(uid: string): Promise<void> {
+    const { error } = await supabase.from('khoa_tai_khoan').delete().eq('uid', uid);
+    if (error) throw error;
+  }
+
+  public async gvCapTaiKhoanThayThe(
+    hoSoCu: HoSoNguoiDung,
+    tenDangNhapMoi: string
+  ): Promise<{ tenDangNhap: string; matKhauTam: string; uidMoi: string }> {
+    const uidGv = hoSoCu.uidGiaoVien || (await this.layUidHienTaiTuAuth());
+    const supabasePhu = laySupabasePhu();
+    const matKhauTam = taoMatKhauTam(8);
+    const emailAo = tenDangNhapSangEmail(tenDangNhapMoi);
+
+    const ttCu = await this.taiTienTrinhTuDamMay(hoSoCu.uid);
+
+    const { data, error } = await supabasePhu.auth.signUp({
+      email: emailAo,
+      password: matKhauTam,
+      options: { data: { dao_hieu: hoSoCu.daoHieu } },
+    });
+    if (error) throw error;
+    const uidMoi = data.user?.id;
+    if (!uidMoi) {
+      throw new Error('Không tạo được tài khoản thay thế.');
+    }
+    await supabasePhu.auth.signOut();
+
+    await this.taoHoSoVaTienTrinhMoi({
+      uid: uidMoi,
+      daoHieu: hoSoCu.daoHieu,
+      tenDangNhap: tenDangNhapMoi,
+      email: hoSoCu.email,
+      lop: hoSoCu.lop,
+      phuongThuc: 'tenDangNhap',
+      tienTrinhBanDau: ttCu,
+      canDoiMatKhau: true,
+      maTongMon: hoSoCu.maTongMon ?? null,
+      uidGiaoVien: uidGv ?? null,
+    });
+
+    await this.gvKhoaTaiKhoan(
+      hoSoCu.uid,
+      `Đã cấp tài khoản thay thế (${tenDangNhapMoi}) bởi Giáo viên phụ trách.`
     );
 
     return { tenDangNhap: tenDangNhapMoi, matKhauTam, uidMoi };
